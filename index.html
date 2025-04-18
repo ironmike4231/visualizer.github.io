@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Visualizer to Video</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background-color: #000;
+    }
+  </style>
+</head>
+<body>
+  <h1>Audio Visualizer to Video</h1>
+  <p>Upload your audio and generate a downloadable visualizer video!</p>
+  <input type="file" id="audioUpload" accept="audio/*" />
+  <canvas id="visualizer" width="800" height="400"></canvas>
+  <button id="generateVideo" disabled>Generate Video</button>
+
+  <script>
+    const audioUpload = document.getElementById('audioUpload');
+    const visualizerCanvas = document.getElementById('visualizer');
+    const generateVideoButton = document.getElementById('generateVideo');
+    const canvasContext = visualizerCanvas.getContext('2d');
+    let audioContext, source, analyser, audioBuffer, animationId;
+
+    // Handle audio file upload
+    audioUpload.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const audioURL = URL.createObjectURL(file);
+        audioContext = new AudioContext();
+
+        const response = await fetch(audioURL);
+        const arrayBuffer = await response.arrayBuffer();
+        audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+
+        visualize();
+        generateVideoButton.disabled = false;
+      }
+    });
+
+    // Visualize the audio
+    function visualize() {
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function draw() {
+        animationId = requestAnimationFrame(draw);
+
+        analyser.getByteFrequencyData(dataArray);
+
+        canvasContext.fillStyle = 'black';
+        canvasContext.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+
+        const barWidth = (visualizerCanvas.width / bufferLength) * 2.5;
+        let barHeight;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          barHeight = dataArray[i];
+          canvasContext.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+          canvasContext.fillRect(x, visualizerCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+          x += barWidth + 1;
+        }
+      }
+
+      draw();
+    }
+
+    // Generate video functionality
+    generateVideoButton.addEventListener('click', () => {
+      cancelAnimationFrame(animationId);
+      // Send canvas frames and audio to the server for video generation.
+      alert('Video generation not implemented in this demo.');
+    });
+  </script>
+</body>
+</html>
